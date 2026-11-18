@@ -45,7 +45,7 @@
             <h1 class="text-base sm:text-lg font-bold text-slate-900 leading-tight">Panel Panitia Seminar</h1>
             <span id="dbStatusBadge" class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">
               <span id="dbStatusDot" class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
-              <span id="dbStatusText">Menghubungkan Firebase...</span>
+              <span id="dbStatusText">Menghubungkan...</span>
             </span>
           </div>
           <p class="text-xs text-slate-500 hidden sm:block">Database: <span class="font-mono text-slate-600">databasebaru-e57a2-default-rtdb</span></p>
@@ -82,7 +82,7 @@
       </div>
       <div class="text-sm text-rose-800">
         <p class="font-bold">Gagal Membaca Data dari Firebase Realtime Database</p>
-        <p id="firebaseErrorDetail" class="mt-0.5 text-rose-700">Pastikan koneksi internet aktif dan Rules di Firebase Realtime Database mengizinkan akses baca/tulis (<code>".read": true, ".write": true</code>).</p>
+        <p id="firebaseErrorDetail" class="mt-0.5 text-rose-700">Pastikan Rules Firebase Console sudah diatur ke <code>".read": true, ".write": true</code>.</p>
       </div>
     </div>
 
@@ -315,7 +315,6 @@
   <script>
     const FIREBASE_BASE_URL = 'https://databasebaru-e57a2-default-rtdb.firebaseio.com';
     const DB_NODE = 'seminar_attendance_records';
-    const STORAGE_KEY = 'seminar_attendance_records';
 
     let allRecords = [];
     let pendingDeleteKey = null;
@@ -383,9 +382,9 @@
       if (manual) refreshIcon.classList.add('animate-spin');
 
       try {
-        const res = await fetch(`${FIREBASE_BASE_URL}/${DB_NODE}.json?t=${Date.now()}`);
+        const res = await fetch(`${FIREBASE_BASE_URL}/${DB_NODE}.json?_t=${Date.now()}`);
         if (!res.ok) {
-          throw new Error(`HTTP ${res.status} — Cek izin baca (Rules) Firebase`);
+          throw new Error(`HTTP Error ${res.status}`);
         }
         const data = await res.json();
 
@@ -410,30 +409,18 @@
           });
         }
 
-        // Urutkan dari yang terbaru hadir
         parsed.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
         allRecords = parsed;
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
 
         setDbStatus('connected', 'Firebase Terhubung');
         renderDashboard();
-        if (manual) showToast('Data berhasil disinkronkan dari Firebase');
+        if (manual) showToast('Data berhasil disinkronkan');
       } catch (err) {
-        console.error('Firebase fetch error:', err);
-        setDbStatus('error', 'Koneksi Bermasalah');
+        console.error('Firebase error:', err);
+        setDbStatus('error', 'Gagal Terhubung');
         document.getElementById('firebaseErrorBanner').classList.remove('hidden');
-        document.getElementById('firebaseErrorDetail').textContent =
-          `Detail: ${err.message}. Pastikan Realtime Database Rules mengizinkan ".read": true dan ".write": true.`;
-
-        // Fallback baca cache lokal jika offline
-        try {
-          const cached = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-          if (Array.isArray(cached) && cached.length > 0 && allRecords.length === 0) {
-            allRecords = cached;
-            renderDashboard();
-          }
-        } catch (_) {}
-
+        document.getElementById('firebaseErrorDetail').textContent = 
+          `Detail: ${err.message}. Pastikan tab Rules di Firebase Console sudah diatur ke .read: true dan .write: true.`;
         if (manual) showToast('Gagal terhubung ke Firebase', true);
       } finally {
         if (manual) {
@@ -463,7 +450,6 @@
       document.getElementById('kpiTotal').textContent = total;
       document.getElementById('totalCountText').textContent = total;
 
-      // Count by Prodi & Angkatan
       const prodiCounts = {};
       const angkatanCounts = {};
 
@@ -495,7 +481,6 @@
         document.getElementById('kpiLastName').textContent = 'Menunggu peserta masuk';
       }
 
-      // Render Chart Angkatan
       const chartAngkatanEl = document.getElementById('chartAngkatan');
       if (!sortedAngkatan.length) {
         chartAngkatanEl.innerHTML = '<p class="text-xs text-slate-400 py-6 text-center">Belum ada data untuk ditampilkan.</p>';
@@ -516,7 +501,6 @@
         }).join('');
       }
 
-      // Render Chart Prodi
       const chartProdiEl = document.getElementById('chartProdi');
       if (!sortedProdi.length) {
         chartProdiEl.innerHTML = '<p class="text-xs text-slate-400 py-6 text-center">Belum ada data untuk ditampilkan.</p>';
@@ -610,7 +594,6 @@
       renderTable();
     }
 
-    // Delete Single Record in Firebase
     window.openDeleteSingle = function(fbKey, nama) {
       pendingDeleteKey = fbKey;
       document.getElementById('deleteTargetName').textContent = nama;
@@ -644,7 +627,6 @@
       }
     });
 
-    // Reset All Records in Firebase
     const resetAllModal = document.getElementById('resetAllModal');
     const resetConfirmInput = document.getElementById('resetConfirmInput');
     const btnConfirmResetAll = document.getElementById('btnConfirmResetAll');
@@ -673,7 +655,6 @@
           method: 'DELETE'
         });
         if (!res.ok) throw new Error('Gagal mereset database Firebase');
-        localStorage.removeItem(STORAGE_KEY);
         showToast('Seluruh data berhasil dihapus dari Firebase');
         await fetchFromFirebase();
       } catch (err) {
@@ -681,7 +662,6 @@
       }
     });
 
-    // Seed Demo Data to Firebase
     async function seedDemoData() {
       const now = Date.now();
       const samples = [
@@ -741,7 +721,6 @@
     document.getElementById('btnSeedDemo').addEventListener('click', seedDemoData);
     document.getElementById('btnSeedDemoSecondary').addEventListener('click', seedDemoData);
 
-    // Export CSV (Excel friendly UTF-8 BOM)
     document.getElementById('btnExportCsv').addEventListener('click', () => {
       if (!allRecords.length) {
         showToast('Tidak ada data untuk diekspor', true);
@@ -778,7 +757,6 @@
       showToast('File CSV berhasil diunduh');
     });
 
-    // Events
     searchInput.addEventListener('input', renderTable);
     filterAngkatan.addEventListener('change', renderTable);
     filterProdi.addEventListener('change', renderTable);
@@ -791,7 +769,6 @@
 
     document.getElementById('btnRefresh').addEventListener('click', () => fetchFromFirebase(true));
 
-    // Initial Load & Real-Time Polling every 4 seconds
     fetchFromFirebase();
     setInterval(() => fetchFromFirebase(false), 4000);
   </script>
