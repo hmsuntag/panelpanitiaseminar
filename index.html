@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Panel Panitia — Rekap Kehadiran Seminar</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      height: 8px;
+      width: 8px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: #f1f5f9;
+      border-radius: 9999px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 9999px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased min-h-screen flex flex-col">
+
+  <!-- Top Navigation Header -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-30">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-sm shadow-indigo-200 shrink-0">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-base sm:text-lg font-bold text-slate-900 leading-tight">Panel Panitia Seminar</h1>
+            <span id="dbStatusBadge" class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+              <span id="dbStatusDot" class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+              <span id="dbStatusText">Menghubungkan Firebase...</span>
+            </span>
+          </div>
+          <p class="text-xs text-slate-500 hidden sm:block">Database: <span class="font-mono text-slate-600">databasebaru-e57a2-default-rtdb</span></p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2 sm:gap-3">
+        <button id="btnRefresh" type="button" class="inline-flex items-center gap-1.5 px-3 py-2 text-xs sm:text-sm font-semibold text-slate-700 bg-white border border-slate-300 rounded-xl hover:bg-slate-50 active:scale-[0.99] transition shadow-2xs" title="Sinkronkan Data Firebase">
+          <svg id="refreshIcon" class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+          <span class="hidden md:inline">Sinkronkan</span>
+        </button>
+
+        <button id="btnExportCsv" type="button" class="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs sm:text-sm font-semibold text-white bg-emerald-600 rounded-xl hover:bg-emerald-700 active:scale-[0.99] transition shadow-sm shadow-emerald-200">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+          <span>Export CSV / Excel</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6">
+
+    <!-- Error / Permission Warning Banner -->
+    <div id="firebaseErrorBanner" class="hidden bg-rose-50 border border-rose-200 rounded-2xl p-4 flex items-start gap-3">
+      <div class="w-8 h-8 rounded-lg bg-rose-100 text-rose-600 flex items-center justify-center shrink-0 mt-0.5">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+        </svg>
+      </div>
+      <div class="text-sm text-rose-800">
+        <p class="font-bold">Gagal Membaca Data dari Firebase Realtime Database</p>
+        <p id="firebaseErrorDetail" class="mt-0.5 text-rose-700">Pastikan koneksi internet aktif dan Rules di Firebase Realtime Database mengizinkan akses baca/tulis (<code>".read": true, ".write": true</code>).</p>
+      </div>
+    </div>
+
+    <!-- KPI Cards -->
+    <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div class="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-2xs flex items-start justify-between">
+        <div>
+          <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">Total Peserta Hadir</p>
+          <p id="kpiTotal" class="text-3xl font-extrabold text-slate-900 mt-1.5">0</p>
+          <p class="text-xs text-slate-500 mt-1">Tercatat di Firebase Cloud</p>
+        </div>
+        <div class="w-11 h-11 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-2xs flex items-start justify-between">
+        <div>
+          <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">Program Studi</p>
+          <p id="kpiProdi" class="text-3xl font-extrabold text-slate-900 mt-1.5">0</p>
+          <p id="kpiTopProdi" class="text-xs text-slate-500 mt-1 truncate max-w-[175px]">Belum ada data</p>
+        </div>
+        <div class="w-11 h-11 rounded-xl bg-sky-50 text-sky-600 flex items-center justify-center shrink-0">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+          </svg>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-2xs flex items-start justify-between">
+        <div>
+          <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">Variasi Angkatan</p>
+          <p id="kpiAngkatan" class="text-3xl font-extrabold text-slate-900 mt-1.5">0</p>
+          <p id="kpiTopAngkatan" class="text-xs text-slate-500 mt-1 truncate max-w-[175px]">Belum ada data</p>
+        </div>
+        <div class="w-11 h-11 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" />
+          </svg>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-2xs flex items-start justify-between">
+        <div>
+          <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">Presensi Terakhir</p>
+          <p id="kpiLastTime" class="text-2xl font-extrabold text-slate-900 mt-2">--:--</p>
+          <p id="kpiLastName" class="text-xs text-slate-500 mt-1 truncate max-w-[175px]">Menunggu peserta masuk</p>
+        </div>
+        <div class="w-11 h-11 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </div>
+      </div>
+    </section>
+
+    <!-- Distribution Summary Charts -->
+    <section class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div class="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-2xs">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-sm font-bold text-slate-800">Distribusi per Angkatan</h2>
+          <span class="text-xs text-slate-400">Proporsi peserta</span>
+        </div>
+        <div id="chartAngkatan" class="space-y-3">
+          <p class="text-xs text-slate-400 py-6 text-center">Belum ada data untuk ditampilkan.</p>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-2xs">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-sm font-bold text-slate-800">Distribusi Program Studi</h2>
+          <span class="text-xs text-slate-400">Top program studi</span>
+        </div>
+        <div id="chartProdi" class="space-y-3">
+          <p class="text-xs text-slate-400 py-6 text-center">Belum ada data untuk ditampilkan.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Data Table Section -->
+    <section class="bg-white rounded-2xl border border-slate-200/80 shadow-2xs overflow-hidden">
+      <!-- Toolbar -->
+      <div class="p-4 sm:p-5 border-b border-slate-200 flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+        <div>
+          <h2 class="text-base font-bold text-slate-900">Daftar Peserta Hadir</h2>
+          <p class="text-xs text-slate-500 mt-0.5">
+            Menampilkan <span id="filteredCount" class="font-semibold text-slate-700">0</span> dari <span id="totalCountText" class="font-semibold text-slate-700">0</span> peserta • Sinkronisasi otomatis setiap 4 detik
+          </p>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2.5">
+          <!-- Search Input -->
+          <div class="relative flex-1 sm:flex-initial min-w-[220px]">
+            <svg class="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <input id="searchInput" type="text" placeholder="Cari nama, NPM, email, WA..." class="w-full pl-9 pr-3 py-2 text-xs sm:text-sm bg-slate-50 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition" />
+          </div>
+
+          <!-- Filter Angkatan -->
+          <select id="filterAngkatan" class="px-3 py-2 text-xs sm:text-sm bg-slate-50 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition">
+            <option value="">Semua Angkatan</option>
+          </select>
+
+          <!-- Filter Prodi -->
+          <select id="filterProdi" class="px-3 py-2 text-xs sm:text-sm bg-slate-50 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition max-w-[190px]">
+            <option value="">Semua Prodi</option>
+          </select>
+
+          <!-- Clear Filters -->
+          <button id="btnClearFilter" type="button" class="hidden px-3 py-2 text-xs font-semibold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-xl transition">
+            Reset Filter
+          </button>
+        </div>
+      </div>
+
+      <!-- Table Wrapper -->
+      <div class="overflow-x-auto custom-scrollbar">
+        <table class="w-full text-left border-collapse">
+          <thead>
+            <tr class="bg-slate-50/90 border-b border-slate-200 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+              <th class="py-3.5 px-4 w-12 text-center">No</th>
+              <th class="py-3.5 px-4">Waktu & Kode</th>
+              <th class="py-3.5 px-4">Nama Lengkap</th>
+              <th class="py-3.5 px-4">NPM</th>
+              <th class="py-3.5 px-4">Angkatan</th>
+              <th class="py-3.5 px-4">Program Studi</th>
+              <th class="py-3.5 px-4">Email</th>
+              <th class="py-3.5 px-4">WhatsApp</th>
+              <th class="py-3.5 px-4 text-center w-20">Aksi</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody" class="divide-y divide-slate-100 text-sm">
+            <tr>
+              <td colspan="9" class="py-12 text-center text-slate-400 text-sm">Memuat data dari Firebase...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Empty State -->
+      <div id="emptyState" class="hidden py-14 px-4 text-center">
+        <div class="w-14 h-14 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center mx-auto mb-3">
+          <svg class="w-7 h-7" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+        </div>
+        <h3 id="emptyTitle" class="text-base font-bold text-slate-800">Belum Ada Peserta yang Presensi</h3>
+        <p id="emptyDesc" class="text-xs sm:text-sm text-slate-500 max-w-md mx-auto mt-1">
+          Data peserta yang mengisi formulir presensi akan muncul secara otomatis di tabel ini melalui Firebase Realtime Database.
+        </p>
+        <div class="mt-4">
+          <button id="btnSeedDemo" type="button" class="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-xl transition">
+            + Isi 3 Data Simulasi ke Firebase
+          </button>
+        </div>
+      </div>
+
+      <!-- Footer Danger Zone & Info -->
+      <div class="px-4 sm:px-5 py-3.5 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3">
+        <p class="text-xs text-slate-500">
+          Endpoint: <code class="px-1.5 py-0.5 bg-slate-200/70 rounded text-slate-700 font-mono">/seminar_attendance_records</code>
+        </p>
+        <div class="flex items-center gap-2">
+          <button id="btnSeedDemoSecondary" type="button" class="px-3 py-1.5 text-xs font-semibold text-slate-600 bg-white border border-slate-300 hover:bg-slate-100 rounded-lg transition">
+            + Data Simulasi
+          </button>
+          <button id="btnResetAll" type="button" class="px-3 py-1.5 text-xs font-semibold text-rose-600 bg-rose-50 border border-rose-200 hover:bg-rose-100 rounded-lg transition">
+            Reset Semua Data
+          </button>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Modal Konfirmasi Hapus Satu Data -->
+  <div id="deleteSingleModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-200">
+      <div class="flex items-center gap-3 text-rose-600 mb-3">
+        <div class="w-10 h-10 rounded-xl bg-rose-100 flex items-center justify-center shrink-0">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+          </svg>
+        </div>
+        <h3 class="text-lg font-bold text-slate-900">Hapus Data Peserta?</h3>
+      </div>
+      <p class="text-sm text-slate-600">
+        Anda akan menghapus data presensi <span id="deleteTargetName" class="font-bold text-slate-900"></span> dari Firebase Database. Tindakan ini tidak dapat dibatalkan.
+      </p>
+      <div class="mt-6 flex justify-end gap-2.5">
+        <button id="btnCancelDeleteSingle" type="button" class="px-4 py-2 text-sm font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition">Batal</button>
+        <button id="btnConfirmDeleteSingle" type="button" class="px-4 py-2 text-sm font-semibold text-white bg-rose-600 hover:bg-rose-700 rounded-xl transition">Ya, Hapus</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Konfirmasi Reset Semua Data -->
+  <div id="resetAllModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-200">
+      <div class="flex items-center gap-3 text-rose-600 mb-3">
+        <div class="w-10 h-10 rounded-xl bg-rose-100 flex items-center justify-center shrink-0">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+        </div>
+        <h3 class="text-lg font-bold text-slate-900">Reset Seluruh Data Database?</h3>
+      </div>
+      <p class="text-sm text-slate-600">
+        Seluruh data kehadiran di Firebase akan dihapus permanen. Ketik <span class="font-mono font-bold text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded">HAPUS</span> di bawah untuk mengonfirmasi.
+      </p>
+      <input id="resetConfirmInput" type="text" placeholder="Ketik HAPUS" class="mt-3 w-full px-3.5 py-2 text-sm border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500 uppercase" />
+      <div class="mt-6 flex justify-end gap-2.5">
+        <button id="btnCancelResetAll" type="button" class="px-4 py-2 text-sm font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition">Batal</button>
+        <button id="btnConfirmResetAll" type="button" disabled class="px-4 py-2 text-sm font-semibold text-white bg-rose-600 hover:bg-rose-700 disabled:opacity-40 disabled:cursor-not-allowed rounded-xl transition">Reset Permanen</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toast" class="fixed bottom-5 right-5 z-50 transform translate-y-16 opacity-0 transition-all duration-300 pointer-events-none">
+    <div class="bg-slate-900 text-white text-xs sm:text-sm font-medium px-4 py-3 rounded-xl shadow-lg flex items-center gap-2.5">
+      <span id="toastDot" class="w-2 h-2 rounded-full bg-emerald-400"></span>
+      <span id="toastMsg">Berhasil disinkronkan</span>
+    </div>
+  </div>
+
+  <script>
+    const FIREBASE_BASE_URL = 'https://databasebaru-e57a2-default-rtdb.firebaseio.com';
+    const DB_NODE = 'seminar_attendance_records';
+    const STORAGE_KEY = 'seminar_attendance_records';
+
+    let allRecords = [];
+    let pendingDeleteKey = null;
+
+    // Elements
+    const tableBody = document.getElementById('tableBody');
+    const emptyState = document.getElementById('emptyState');
+    const emptyTitle = document.getElementById('emptyTitle');
+    const emptyDesc = document.getElementById('emptyDesc');
+    const searchInput = document.getElementById('searchInput');
+    const filterAngkatan = document.getElementById('filterAngkatan');
+    const filterProdi = document.getElementById('filterProdi');
+    const btnClearFilter = document.getElementById('btnClearFilter');
+
+    function setDbStatus(state, text) {
+      const badge = document.getElementById('dbStatusBadge');
+      const dot = document.getElementById('dbStatusDot');
+      const label = document.getElementById('dbStatusText');
+      label.textContent = text;
+
+      if (state === 'connected') {
+        badge.className = 'inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200';
+        dot.className = 'w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse';
+        document.getElementById('firebaseErrorBanner').classList.add('hidden');
+      } else if (state === 'error') {
+        badge.className = 'inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-rose-50 text-rose-700 border border-rose-200';
+        dot.className = 'w-1.5 h-1.5 rounded-full bg-rose-500';
+      } else {
+        badge.className = 'inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-200';
+        dot.className = 'w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse';
+      }
+    }
+
+    function showToast(message, isError = false) {
+      const toast = document.getElementById('toast');
+      const toastMsg = document.getElementById('toastMsg');
+      const toastDot = document.getElementById('toastDot');
+      toastMsg.textContent = message;
+      toastDot.className = isError ? 'w-2 h-2 rounded-full bg-rose-400' : 'w-2 h-2 rounded-full bg-emerald-400';
+      toast.classList.remove('translate-y-16', 'opacity-0');
+      setTimeout(() => {
+        toast.classList.add('translate-y-16', 'opacity-0');
+      }, 2800);
+    }
+
+    function escapeHtml(str) {
+      return String(str ?? '')
+        .replace(/&/g, '&')
+        .replace(/</g, '<')
+        .replace(/>/g, '>')
+        .replace(/"/g, '"')
+        .replace(/'/g, ''');
+    }
+
+    function formatWaLink(wa) {
+      const digits = String(wa || '').replace(/\D/g, '');
+      if (!digits) return '#';
+      if (digits.startsWith('0')) return 'https://wa.me/62' + digits.slice(1);
+      if (digits.startsWith('62')) return 'https://wa.me/' + digits;
+      return 'https://wa.me/62' + digits;
+    }
+
+    async function fetchFromFirebase(manual = false) {
+      const refreshIcon = document.getElementById('refreshIcon');
+      if (manual) refreshIcon.classList.add('animate-spin');
+
+      try {
+        const res = await fetch(`${FIREBASE_BASE_URL}/${DB_NODE}.json?t=${Date.now()}`);
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status} — Cek izin baca (Rules) Firebase`);
+        }
+        const data = await res.json();
+
+        const parsed = [];
+        if (data && typeof data === 'object') {
+          Object.entries(data).forEach(([fbKey, item]) => {
+            if (item && typeof item === 'object') {
+              parsed.push({
+                fbKey,
+                id: item.id || fbKey,
+                ticketCode: item.ticketCode || '-',
+                timestamp: item.timestamp || 0,
+                waktu: item.waktu || '-',
+                nama: item.nama || '-',
+                angkatan: String(item.angkatan || '-'),
+                npm: String(item.npm || '-'),
+                prodi: item.prodi || '-',
+                email: item.email || '-',
+                whatsapp: String(item.whatsapp || '-')
+              });
+            }
+          });
+        }
+
+        // Urutkan dari yang terbaru hadir
+        parsed.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+        allRecords = parsed;
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
+
+        setDbStatus('connected', 'Firebase Terhubung');
+        renderDashboard();
+        if (manual) showToast('Data berhasil disinkronkan dari Firebase');
+      } catch (err) {
+        console.error('Firebase fetch error:', err);
+        setDbStatus('error', 'Koneksi Bermasalah');
+        document.getElementById('firebaseErrorBanner').classList.remove('hidden');
+        document.getElementById('firebaseErrorDetail').textContent =
+          `Detail: ${err.message}. Pastikan Realtime Database Rules mengizinkan ".read": true dan ".write": true.`;
+
+        // Fallback baca cache lokal jika offline
+        try {
+          const cached = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+          if (Array.isArray(cached) && cached.length > 0 && allRecords.length === 0) {
+            allRecords = cached;
+            renderDashboard();
+          }
+        } catch (_) {}
+
+        if (manual) showToast('Gagal terhubung ke Firebase', true);
+      } finally {
+        if (manual) {
+          setTimeout(() => refreshIcon.classList.remove('animate-spin'), 400);
+        }
+      }
+    }
+
+    function updateFilterDropdowns() {
+      const currentAngkatan = filterAngkatan.value;
+      const currentProdi = filterProdi.value;
+
+      const angkatanSet = [...new Set(allRecords.map(r => r.angkatan).filter(Boolean))].sort((a, b) => b.localeCompare(a));
+      const prodiSet = [...new Set(allRecords.map(r => r.prodi).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+
+      filterAngkatan.innerHTML = '<option value="">Semua Angkatan</option>' +
+        angkatanSet.map(a => `<option value="${escapeHtml(a)}">Angkatan ${escapeHtml(a)}</option>`).join('');
+      if (angkatanSet.includes(currentAngkatan)) filterAngkatan.value = currentAngkatan;
+
+      filterProdi.innerHTML = '<option value="">Semua Prodi</option>' +
+        prodiSet.map(p => `<option value="${escapeHtml(p)}">${escapeHtml(p)}</option>`).join('');
+      if (prodiSet.includes(currentProdi)) filterProdi.value = currentProdi;
+    }
+
+    function renderKpisAndCharts() {
+      const total = allRecords.length;
+      document.getElementById('kpiTotal').textContent = total;
+      document.getElementById('totalCountText').textContent = total;
+
+      // Count by Prodi & Angkatan
+      const prodiCounts = {};
+      const angkatanCounts = {};
+
+      allRecords.forEach(r => {
+        prodiCounts[r.prodi] = (prodiCounts[r.prodi] || 0) + 1;
+        angkatanCounts[r.angkatan] = (angkatanCounts[r.angkatan] || 0) + 1;
+      });
+
+      const sortedProdi = Object.entries(prodiCounts).sort((a, b) => b[1] - a[1]);
+      const sortedAngkatan = Object.entries(angkatanCounts).sort((a, b) => b[0].localeCompare(a[0]));
+
+      document.getElementById('kpiProdi').textContent = sortedProdi.length;
+      document.getElementById('kpiTopProdi').textContent = sortedProdi.length
+        ? `Terbanyak: ${sortedProdi[0][0]} (${sortedProdi[0][1]})`
+        : 'Belum ada data';
+
+      document.getElementById('kpiAngkatan').textContent = sortedAngkatan.length;
+      document.getElementById('kpiTopAngkatan').textContent = sortedAngkatan.length
+        ? `Terbanyak: ${[...sortedAngkatan].sort((a, b) => b[1] - a[1])[0][0]} (${[...sortedAngkatan].sort((a, b) => b[1] - a[1])[0][1]})`
+        : 'Belum ada data';
+
+      if (total > 0) {
+        const latest = allRecords[0];
+        const timePart = latest.waktu.includes(',') ? latest.waktu.split(',')[1].trim() : latest.waktu;
+        document.getElementById('kpiLastTime').textContent = timePart;
+        document.getElementById('kpiLastName').textContent = latest.nama;
+      } else {
+        document.getElementById('kpiLastTime').textContent = '--:--';
+        document.getElementById('kpiLastName').textContent = 'Menunggu peserta masuk';
+      }
+
+      // Render Chart Angkatan
+      const chartAngkatanEl = document.getElementById('chartAngkatan');
+      if (!sortedAngkatan.length) {
+        chartAngkatanEl.innerHTML = '<p class="text-xs text-slate-400 py-6 text-center">Belum ada data untuk ditampilkan.</p>';
+      } else {
+        chartAngkatanEl.innerHTML = sortedAngkatan.map(([angk, count]) => {
+          const pct = Math.round((count / total) * 100);
+          return `
+            <div>
+              <div class="flex justify-between text-xs font-medium mb-1">
+                <span class="text-slate-700 font-semibold">Angkatan ${escapeHtml(angk)}</span>
+                <span class="text-slate-500">${count} peserta (${pct}%)</span>
+              </div>
+              <div class="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+                <div class="h-full bg-indigo-600 rounded-full transition-all duration-500" style="width: ${pct}%"></div>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      // Render Chart Prodi
+      const chartProdiEl = document.getElementById('chartProdi');
+      if (!sortedProdi.length) {
+        chartProdiEl.innerHTML = '<p class="text-xs text-slate-400 py-6 text-center">Belum ada data untuk ditampilkan.</p>';
+      } else {
+        chartProdiEl.innerHTML = sortedProdi.slice(0, 5).map(([prodi, count]) => {
+          const pct = Math.round((count / total) * 100);
+          return `
+            <div>
+              <div class="flex justify-between text-xs font-medium mb-1 gap-2">
+                <span class="text-slate-700 font-semibold truncate">${escapeHtml(prodi)}</span>
+                <span class="text-slate-500 shrink-0">${count} peserta (${pct}%)</span>
+              </div>
+              <div class="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+                <div class="h-full bg-sky-500 rounded-full transition-all duration-500" style="width: ${pct}%"></div>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+    }
+
+    function renderTable() {
+      const keyword = searchInput.value.trim().toLowerCase();
+      const selAngkatan = filterAngkatan.value;
+      const selProdi = filterProdi.value;
+
+      const hasFilter = Boolean(keyword || selAngkatan || selProdi);
+      btnClearFilter.classList.toggle('hidden', !hasFilter);
+
+      const filtered = allRecords.filter(r => {
+        const matchAngkatan = !selAngkatan || r.angkatan === selAngkatan;
+        const matchProdi = !selProdi || r.prodi === selProdi;
+        const matchKeyword = !keyword || [
+          r.nama, r.npm, r.prodi, r.email, r.whatsapp, r.ticketCode, r.angkatan
+        ].some(val => String(val).toLowerCase().includes(keyword));
+        return matchAngkatan && matchProdi && matchKeyword;
+      });
+
+      document.getElementById('filteredCount').textContent = filtered.length;
+
+      if (filtered.length === 0) {
+        tableBody.innerHTML = '';
+        emptyState.classList.remove('hidden');
+        if (allRecords.length > 0 && hasFilter) {
+          emptyTitle.textContent = 'Data Tidak Ditemukan';
+          emptyDesc.textContent = 'Tidak ada peserta yang cocok dengan kata kunci atau filter yang dipilih.';
+        } else {
+          emptyTitle.textContent = 'Belum Ada Peserta yang Presensi';
+          emptyDesc.textContent = 'Data peserta yang mengisi formulir presensi akan muncul secara otomatis di tabel ini melalui Firebase Realtime Database.';
+        }
+        return;
+      }
+
+      emptyState.classList.add('hidden');
+      tableBody.innerHTML = filtered.map((item, idx) => `
+        <tr class="hover:bg-slate-50/90 transition-colors group">
+          <td class="py-3.5 px-4 text-center text-xs font-semibold text-slate-400">${idx + 1}</td>
+          <td class="py-3.5 px-4 whitespace-nowrap">
+            <span class="inline-block px-2 py-0.5 text-[11px] font-mono font-bold bg-indigo-50 text-indigo-700 rounded-md">${escapeHtml(item.ticketCode)}</span>
+            <div class="text-[11px] text-slate-400 mt-0.5">${escapeHtml(item.waktu)}</div>
+          </td>
+          <td class="py-3.5 px-4 font-semibold text-slate-900 whitespace-nowrap">${escapeHtml(item.nama)}</td>
+          <td class="py-3.5 px-4 font-mono text-xs text-slate-700 whitespace-nowrap">${escapeHtml(item.npm)}</td>
+          <td class="py-3.5 px-4 whitespace-nowrap">
+            <span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-slate-100 text-slate-700">${escapeHtml(item.angkatan)}</span>
+          </td>
+          <td class="py-3.5 px-4 text-slate-700 text-xs sm:text-sm">${escapeHtml(item.prodi)}</td>
+          <td class="py-3.5 px-4 text-xs text-slate-600">${escapeHtml(item.email)}</td>
+          <td class="py-3.5 px-4 whitespace-nowrap">
+            <a href="${formatWaLink(item.whatsapp)}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition" title="Chat via WhatsApp">
+              <span>${escapeHtml(item.whatsapp)}</span>
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+              </svg>
+            </a>
+          </td>
+          <td class="py-3.5 px-4 text-center">
+            <button type="button" onclick="openDeleteSingle('${escapeHtml(item.fbKey)}', '${escapeHtml(item.nama)}')" class="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition" title="Hapus Data">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function renderDashboard() {
+      updateFilterDropdowns();
+      renderKpisAndCharts();
+      renderTable();
+    }
+
+    // Delete Single Record in Firebase
+    window.openDeleteSingle = function(fbKey, nama) {
+      pendingDeleteKey = fbKey;
+      document.getElementById('deleteTargetName').textContent = nama;
+      const modal = document.getElementById('deleteSingleModal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    };
+
+    function closeDeleteSingle() {
+      pendingDeleteKey = null;
+      const modal = document.getElementById('deleteSingleModal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    document.getElementById('btnCancelDeleteSingle').addEventListener('click', closeDeleteSingle);
+    document.getElementById('btnConfirmDeleteSingle').addEventListener('click', async () => {
+      if (!pendingDeleteKey) return;
+      const keyToDelete = pendingDeleteKey;
+      closeDeleteSingle();
+
+      try {
+        const res = await fetch(`${FIREBASE_BASE_URL}/${DB_NODE}/${encodeURIComponent(keyToDelete)}.json`, {
+          method: 'DELETE'
+        });
+        if (!res.ok) throw new Error('Gagal menghapus di Firebase');
+        showToast('Data peserta berhasil dihapus dari Firebase');
+        await fetchFromFirebase();
+      } catch (err) {
+        showToast('Gagal menghapus data: ' + err.message, true);
+      }
+    });
+
+    // Reset All Records in Firebase
+    const resetAllModal = document.getElementById('resetAllModal');
+    const resetConfirmInput = document.getElementById('resetConfirmInput');
+    const btnConfirmResetAll = document.getElementById('btnConfirmResetAll');
+
+    document.getElementById('btnResetAll').addEventListener('click', () => {
+      resetConfirmInput.value = '';
+      btnConfirmResetAll.disabled = true;
+      resetAllModal.classList.remove('hidden');
+      resetAllModal.classList.add('flex');
+    });
+
+    document.getElementById('btnCancelResetAll').addEventListener('click', () => {
+      resetAllModal.classList.add('hidden');
+      resetAllModal.classList.remove('flex');
+    });
+
+    resetConfirmInput.addEventListener('input', () => {
+      btnConfirmResetAll.disabled = resetConfirmInput.value.trim().toUpperCase() !== 'HAPUS';
+    });
+
+    btnConfirmResetAll.addEventListener('click', async () => {
+      resetAllModal.classList.add('hidden');
+      resetAllModal.classList.remove('flex');
+      try {
+        const res = await fetch(`${FIREBASE_BASE_URL}/${DB_NODE}.json`, {
+          method: 'DELETE'
+        });
+        if (!res.ok) throw new Error('Gagal mereset database Firebase');
+        localStorage.removeItem(STORAGE_KEY);
+        showToast('Seluruh data berhasil dihapus dari Firebase');
+        await fetchFromFirebase();
+      } catch (err) {
+        showToast('Gagal mereset data: ' + err.message, true);
+      }
+    });
+
+    // Seed Demo Data to Firebase
+    async function seedDemoData() {
+      const now = Date.now();
+      const samples = [
+        {
+          id: 'SEM-' + (now - 180000),
+          ticketCode: 'SEM-8412',
+          timestamp: now - 180000,
+          waktu: new Date(now - 180000).toLocaleString('id-ID'),
+          nama: 'Alya Putri Ramadhani',
+          angkatan: '2024',
+          npm: '241110017311014',
+          prodi: 'Teknik Sipil',
+          email: 'alya.ramadhani@student.ac.id',
+          whatsapp: '081254889910'
+        },
+        {
+          id: 'SEM-' + (now - 90000),
+          ticketCode: 'SEM-5290',
+          timestamp: now - 90000,
+          waktu: new Date(now - 90000).toLocaleString('id-ID'),
+          nama: 'Muhammad Rizky Pratama',
+          angkatan: '2023',
+          npm: '231110017311088',
+          prodi: 'Teknik Informatika',
+          email: 'rizky.pratama@student.ac.id',
+          whatsapp: '085247112233'
+        },
+        {
+          id: 'SEM-' + now,
+          ticketCode: 'SEM-9104',
+          timestamp: now,
+          waktu: new Date(now).toLocaleString('id-ID'),
+          nama: 'Nabila Azzahra',
+          angkatan: '2025',
+          npm: '251110017311209',
+          prodi: 'Manajemen',
+          email: 'nabila.azzahra@student.ac.id',
+          whatsapp: '082155667788'
+        }
+      ];
+
+      try {
+        for (const item of samples) {
+          await fetch(`${FIREBASE_BASE_URL}/${DB_NODE}.json`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(item)
+          });
+        }
+        showToast('3 data simulasi berhasil dikirim ke Firebase');
+        await fetchFromFirebase();
+      } catch (err) {
+        showToast('Gagal menambah data simulasi: ' + err.message, true);
+      }
+    }
+
+    document.getElementById('btnSeedDemo').addEventListener('click', seedDemoData);
+    document.getElementById('btnSeedDemoSecondary').addEventListener('click', seedDemoData);
+
+    // Export CSV (Excel friendly UTF-8 BOM)
+    document.getElementById('btnExportCsv').addEventListener('click', () => {
+      if (!allRecords.length) {
+        showToast('Tidak ada data untuk diekspor', true);
+        return;
+      }
+
+      const headers = ['No', 'Kode Tiket', 'Waktu Presensi', 'Nama Lengkap', 'NPM', 'Angkatan', 'Program Studi', 'Email', 'Nomor WhatsApp'];
+      const rows = allRecords.map((r, i) => [
+        i + 1,
+        r.ticketCode,
+        r.waktu,
+        r.nama,
+        `'${r.npm}`,
+        r.angkatan,
+        r.prodi,
+        r.email,
+        `'${r.whatsapp}`
+      ]);
+
+      const csvContent = '\uFEFF' + [headers, ...rows]
+        .map(row => row.map(cell => `"${String(cell ?? '').replace(/"/g, '""')}"`).join(','))
+        .join('\r\n');
+
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const dateStamp = new Date().toISOString().slice(0, 10);
+      a.href = url;
+      a.download = `Rekap_Kehadiran_Seminar_${dateStamp}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showToast('File CSV berhasil diunduh');
+    });
+
+    // Events
+    searchInput.addEventListener('input', renderTable);
+    filterAngkatan.addEventListener('change', renderTable);
+    filterProdi.addEventListener('change', renderTable);
+    btnClearFilter.addEventListener('click', () => {
+      searchInput.value = '';
+      filterAngkatan.value = '';
+      filterProdi.value = '';
+      renderTable();
+    });
+
+    document.getElementById('btnRefresh').addEventListener('click', () => fetchFromFirebase(true));
+
+    // Initial Load & Real-Time Polling every 4 seconds
+    fetchFromFirebase();
+    setInterval(() => fetchFromFirebase(false), 4000);
+  </script>
+</body>
+</html>
